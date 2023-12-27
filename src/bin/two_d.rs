@@ -1,5 +1,6 @@
 use fea::two_d::beam_elements::*;
 use fea::two_d::*;
+use ndarray::prelude::*;
 
 fn main() {
     let student_id_last_digit = 9_f32;
@@ -20,12 +21,11 @@ fn main() {
     let p2 = Point {
         id: 2,
         pos: Vector(0.0, l * theta.sin()),
-        bc: BoundaryCondition::Force(Vector(0.0, 1000.0)),
+        bc: BoundaryCondition::Fixed,
         beams: vec![],
     };
 
     let l_e3 = 2.0 / theta.sin();
-    println!("l_e3 {l_e3}");
 
     let p3 = Point {
         id: 3,
@@ -80,6 +80,21 @@ fn main() {
     )
     .unwrap();
 
-    println!("{:?}", w);
-    println!("{:?}", w.stiffness_matrix().unwrap());
+    println!("w = {:?}", w);
+    println!("w.shape() = {:?}", w.shape());
+    let stiffness = Array2::from_shape_vec(w.shape(), w.stiffness()).unwrap();
+    println!("w.stiffness = \n{:?}", stiffness);
+    println!("w.displacement() = {:?}", w.displacement());
+    println!("w.force() = {:?}", w.force());
+
+    let reduced_stiffness =
+        Array2::from_shape_vec(w.reduced_shape(), w.reduced_stiffness()).unwrap();
+    let reduced_force = Array2::from_shape_vec((1, w.reduced_dof()), w.reduced_force()).unwrap();
+    let reduced_displacement =
+        Array2::from_shape_vec((1, w.reduced_dof()), w.reduced_displacement()).unwrap();
+    println!("w.reduced_stiffness() = \n{:?}", reduced_stiffness);
+    println!("w.reduced_force() = {:?}", reduced_force);
+    println!("w.reduced_displacement() = {:?}", reduced_displacement);
+
+    //println!("soln: {:?}", reduced_force / reduced_stiffness)
 }

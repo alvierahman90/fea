@@ -1,5 +1,5 @@
 use super::*;
-use ndarray::prelude::*;
+use crate::Value;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -11,8 +11,24 @@ pub struct World {
 }
 
 impl World {
-    pub fn stiffness_matrix(&self) -> Result<Array<f32, Ix2>, String> {
-        let dof = self.points.len() * 2;
+    pub fn dof(&self) -> usize {
+        self.points.len() * 2
+    }
+
+    pub fn reduced_dof(&self) -> usize {
+        self.reduced_displacement().len()
+    }
+
+    pub fn shape(&self) -> (usize, usize) {
+        (self.dof(), self.dof())
+    }
+
+    pub fn reduced_shape(&self) -> (usize, usize) {
+        (self.reduced_dof(), self.reduced_dof())
+    }
+    /// Create the stiffness matrix for the system of equations to solve
+    pub fn stiffness(&self) -> Vec<f32> {
+        let dof = self.dof();
         let mut a: Vec<f32> = vec![0.0; dof.pow(2)];
 
         for point in self.points.values() {
@@ -53,10 +69,84 @@ impl World {
             }
         }
 
-        match Array2::from_shape_vec((dof, dof), a) {
-            Ok(arr) => Ok(arr),
-            Err(e) => Err(e.to_string()),
+        a
+    }
+    fn idx_to_coord(&self, idx: usize) -> (usize, usize) {
+        let shape = self.shape();
+
+        let row = idx / shape.0;
+        let col = idx - (row * shape.0);
+
+        (row, col)
+    }
+
+    pub fn reduced_stiffness(&self) -> Vec<f32> {
+        let d = self.displacement();
+
+        self.stiffness()
+            .into_iter()
+            .enumerate()
+            .filter(|&(i, _)| {
+                let (row, col) = self.idx_to_coord(i);
+                //println!("row = {} d[row] = {:?}", row, d[row]);
+                //println!("col = {} d[col] = {:?}", col, d[col]);
+                d[row] == Value::Unknown && d[col] == Value::Unknown
+            })
+            .map(|(_, e)| e)
+            .collect()
+    }
+
+    pub fn displacement(&self) -> Vec<Value> {
+        let mut a = vec![Value::Known(0_f32); self.dof()];
+
+        for point in self.points.values() {
+            let point = point.borrow();
+            let ax = 2 * (point.id - 1);
+            let ay = ax + 1;
+
+            if let BoundaryCondition::Fixed = point.bc {
+                continue;
+            }
+
+            a[ax] = Value::Unknown;
+            a[ay] = Value::Unknown;
         }
+
+        a
+    }
+
+    pub fn reduced_displacement(&self) -> Vec<Value> {
+        self.displacement()
+            .into_iter()
+            .filter(|d| *d == Value::Unknown)
+            .collect::<Vec<_>>()
+    }
+
+    pub fn force(&self) -> Vec<Value> {
+        let mut a = vec![Value::Unknown; self.dof()];
+        for point in self.points.values() {
+            let point = point.borrow();
+            let ax = 2 * (point.id - 1);
+            let ay = ax + 1;
+
+            if let BoundaryCondition::Force(v) = &point.bc {
+                a[ax] = Value::Known(v.0);
+                a[ay] = Value::Known(v.1);
+            }
+        }
+
+        a
+    }
+
+    pub fn reduced_force(&self) -> Vec<Value> {
+        let d = self.displacement();
+
+        self.force()
+            .into_iter()
+            .enumerate()
+            .filter(|&(i, _)| d[i] == Value::Unknown)
+            .map(|(_, f)| f)
+            .collect()
     }
 
     pub fn link(&mut self, id1: usize, id2: usize, new_beam: NewBeam) -> Result<(), &str> {
