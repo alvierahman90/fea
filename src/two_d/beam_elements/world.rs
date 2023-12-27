@@ -1,11 +1,13 @@
 use super::*;
 use ndarray::prelude::*;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct World {
-    pub points: HashMap<usize, Point>,
-    pub beams: HashMap<usize, Beam>,
+    pub points: HashMap<usize, Rc<RefCell<Point>>>,
+    pub beams: HashMap<usize, Rc<RefCell<Beam>>>,
 }
 
 impl World {
@@ -13,28 +15,23 @@ impl World {
         let dof = self.points.len() * 2;
         let mut a: Vec<f32> = vec![0.0; dof.pow(2)];
 
-        // set up forces exerted by displacements of other beams
-        for (_point_id, point) in &self.points {
-            for beam_id in &point.beams {
-                let beam = self.beams.get(beam_id).unwrap();
-                let stiffness = beam.stiffness(self);
-                let other_point = self.points.get(&beam.other_point(point.id)).unwrap();
+        for point in self.points.values() {
+            let point = point.borrow();
+            for beam in &point.beams {
+                let beam = beam.upgrade().unwrap();
+                let beam = beam.borrow();
+                let other_point = beam.other_point(&point).unwrap();
+                let other_point = other_point.borrow();
                 let ax = 2 * (point.id - 1);
                 let ay = ax + 1;
                 let bx = 2 * (other_point.id - 1);
                 let by = bx + 1;
 
-                let angle = beam.angle(self);
-                println!(
-                    "point: {} to point {} beam: {} beam_angle: {}",
-                    _point_id,
-                    other_point.id,
-                    beam.id,
-                    beam.angle(self).to_degrees()
-                );
+                let angle = beam.angle();
                 let c2 = angle.cos().powi(2);
                 let s2 = angle.sin().powi(2);
                 let cs = angle.cos() * angle.sin();
+                let stiffness = beam.stiffness();
 
                 // F_AX += K_AB * c2 * (U_AX)
                 a[ax * dof + ax] += stiffness * c2;
@@ -64,22 +61,28 @@ impl World {
 
     pub fn link(&mut self, id1: usize, id2: usize, new_beam: NewBeam) -> Result<(), &str> {
         let b_id = self.beams.len();
-        let p1 = match self.points.get_mut(&id1) {
+        let p1 = match self.points.get(&id1) {
             Some(point) => point,
             None => return Err("Point with id1 not found"),
         };
-        p1.beams.push(b_id);
-        let p1_id = p1.id;
-
-        let p2 = match self.points.get_mut(&id2) {
+        let p2 = match self.points.get(&id2) {
             Some(point) => point,
             None => return Err("Point with id1 not found"),
         };
-        let p2_id = p2.id;
-        p2.beams.push(b_id);
 
-        let mut b = Beam::new(p1_id, p2_id, new_beam);
-        b.id = b_id;
+        let b = Rc::new(RefCell::new(Beam::new(
+            Rc::downgrade(p1),
+            Rc::downgrade(p2),
+            new_beam,
+        )));
+
+        {
+            b.borrow_mut().id = b_id;
+        }
+
+        p1.borrow_mut().beams.push(Rc::downgrade(&b));
+        p2.borrow_mut().beams.push(Rc::downgrade(&b));
+
         self.beams.insert(b_id, b);
 
         Ok(())
@@ -98,7 +101,7 @@ impl From<Vec<Point>> for World {
         };
 
         while let Some(point) = points.pop() {
-            w.points.insert(point.id, point);
+            w.points.insert(point.id, Rc::new(RefCell::new(point)));
         }
 
         w
