@@ -1,6 +1,8 @@
 use fea::two_d::beam_elements::*;
 use fea::two_d::*;
+use fea::Value;
 use ndarray::prelude::*;
+use ndarray_linalg::Solve;
 
 fn main() {
     let student_id_last_digit = 9_f32;
@@ -82,6 +84,7 @@ fn main() {
 
     println!("w = {:?}", w);
     println!("w.shape() = {:?}", w.shape());
+
     let stiffness = Array2::from_shape_vec(w.shape(), w.stiffness()).unwrap();
     println!("w.stiffness = \n{:?}", stiffness);
     println!("w.displacement() = {:?}", w.displacement());
@@ -89,12 +92,23 @@ fn main() {
 
     let reduced_stiffness =
         Array2::from_shape_vec(w.reduced_shape(), w.reduced_stiffness()).unwrap();
-    let reduced_force = Array2::from_shape_vec((1, w.reduced_dof()), w.reduced_force()).unwrap();
+    let reduced_force = w
+        .reduced_force()
+        .into_iter()
+        .map(|v| match v {
+            Value::Known(v) => v,
+            Value::Unknown => panic!("Unknown force at unknown vector!"),
+        })
+        .collect();
+    let reduced_force = Array1::from_shape_vec(w.reduced_dof(), reduced_force).unwrap();
     let reduced_displacement =
         Array2::from_shape_vec((1, w.reduced_dof()), w.reduced_displacement()).unwrap();
     println!("w.reduced_stiffness() = \n{:?}", reduced_stiffness);
     println!("w.reduced_force() = {:?}", reduced_force);
     println!("w.reduced_displacement() = {:?}", reduced_displacement);
 
-    //println!("soln: {:?}", reduced_force / reduced_stiffness)
+    println!(
+        "soln: {:?}",
+        reduced_stiffness.solve_into(reduced_force).unwrap(),
+    )
 }
