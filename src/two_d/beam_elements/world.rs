@@ -19,34 +19,40 @@ impl World {
                 let beam = self.beams.get(beam_id).unwrap();
                 let stiffness = beam.stiffness(self);
                 let other_point = self.points.get(&beam.other_point(point.id)).unwrap();
-                let ax = 2*(point.id-1);
+                let ax = 2 * (point.id - 1);
                 let ay = ax + 1;
-                let bx = 2*(other_point.id-1);
+                let bx = 2 * (other_point.id - 1);
                 let by = bx + 1;
-               
+
                 let angle = beam.angle(self);
-                println!("point: {} to point {} beam: {} beam_angle: {}", _point_id, other_point.id, beam.id, beam.angle(self).to_degrees());
+                println!(
+                    "point: {} to point {} beam: {} beam_angle: {}",
+                    _point_id,
+                    other_point.id,
+                    beam.id,
+                    beam.angle(self).to_degrees()
+                );
                 let c2 = angle.cos().powi(2);
                 let s2 = angle.sin().powi(2);
                 let cs = angle.cos() * angle.sin();
 
                 // F_AX += K_AB * c2 * (U_AX)
-                a[ax*dof + ax] += stiffness * c2;
+                a[ax * dof + ax] += stiffness * c2;
                 // F_AX += K_AB * cs * U_AY
-                a[ax*dof + ay] += stiffness * cs;
+                a[ax * dof + ay] += stiffness * cs;
                 // F_AY += K_AB * cs * U_AX
-                a[ay*dof + ax] += stiffness * cs;
+                a[ay * dof + ax] += stiffness * cs;
                 // F_AY += K_AB * s^2 * U_AY
-                a[ay*dof + ay] += stiffness * s2;
+                a[ay * dof + ay] += stiffness * s2;
 
                 // F_AX += K_AB -c^2 U_BX
-                a[ax*dof + bx] += stiffness * -c2;
+                a[ax * dof + bx] += stiffness * -c2;
                 // F_AX += K_AB -cs U_BY
-                a[ax*dof + by] += stiffness * -cs;
+                a[ax * dof + by] += stiffness * -cs;
                 // F_AY += K_AB -cs U_BX
-                a[ay*dof + bx] += stiffness * -cs;
+                a[ay * dof + bx] += stiffness * -cs;
                 // F_AY += K_AB -s^2 U_BY
-                a[ay*dof + by] += stiffness * -s2;
+                a[ay * dof + by] += stiffness * -s2;
             }
         }
 
@@ -56,7 +62,7 @@ impl World {
         }
     }
 
-    pub fn link(&mut self, id1: usize, id2: usize, new_beam: NewBeam) -> Result<(), &str>{
+    pub fn link(&mut self, id1: usize, id2: usize, new_beam: NewBeam) -> Result<(), &str> {
         let b_id = self.beams.len();
         let p1 = match self.points.get_mut(&id1) {
             Some(point) => point,
@@ -86,7 +92,10 @@ impl From<Vec<Point>> for World {
     /// If this is not the case, then some points will be overriden.
     fn from(points: Vec<Point>) -> World {
         let mut points = points;
-        let mut w = World { points: HashMap::new(), beams: HashMap::new() };
+        let mut w = World {
+            points: HashMap::new(),
+            beams: HashMap::new(),
+        };
 
         while let Some(point) = points.pop() {
             w.points.insert(point.id, point);

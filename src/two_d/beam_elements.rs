@@ -1,25 +1,11 @@
 mod beam;
+mod boundary_condition;
 mod cross_section;
+mod point;
 mod world;
 
 pub use beam::*;
+pub use boundary_condition::*;
 pub use cross_section::*;
+pub use point::*;
 pub use world::*;
-
-use super::Vector;
-use crate::Material;
-
-#[derive(Debug)]
-pub struct Point {
-    pub id: usize,
-    pub pos: Vector,
-    pub bc: BoundaryCondition,
-    pub beams: Vec<usize>,
-}
-
-#[derive(Debug)]
-pub enum BoundaryCondition {
-    Free,
-    Fixed,
-    Force(Vector),
-}
