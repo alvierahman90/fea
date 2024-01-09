@@ -1,6 +1,6 @@
 # 2D Problem Definition Version 1 (PD2v1) Specification
 
-A format for defining shapes that humans and machines can read.
+A format for defining shapes that humans can write and machines can read.
 
 I think it should have a better name.
 
