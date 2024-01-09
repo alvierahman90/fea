@@ -1,0 +1,5 @@
+add support for parsing PD2v1 files for beam element programs
+create program to help make PD2v1 files by drawing on canvas
+expand beam element solver to be able to solve problems with nodes with no boundary conditions
+
+support finite element solving
