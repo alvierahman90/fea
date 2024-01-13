@@ -8,6 +8,17 @@ by boundary conditions, but this will be improved in future.
 The project also has no GUI for defining the problem at the moment, and must be written
 in rust (see [`src/bin/two_d.rs`](./src/bin/two_d.rs) for an example of setting up a problem).
 
+## Requirements
+
+- [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS)
+- A FORTRAN compiler, such as [GFortran](https://gcc.gnu.org/fortran/)
+
+To install on an Arch based distro:
+
+```
+pacman -S blas-openblas gcc-fortran
+```
+
 # Format Specifications
 
 The project will likely be composed of multiple independent programs as it is developed.
