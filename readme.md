@@ -24,3 +24,5 @@ pacman -S blas-openblas gcc-fortran
 The project will likely be composed of multiple independent programs as it is developed.
 The formats specified in the [specs folder](./specs) will be used to to exchange information between
 the programs.
+
+- [PD2v1](./specs/pd2v1.md) (2D Problem Definition Version 1)

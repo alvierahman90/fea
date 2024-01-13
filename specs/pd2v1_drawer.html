@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" type="text/css" href="https://styles.alv.cx/colors/gruvbox.css" />
+	<link rel="stylesheet" type="text/css" href="https://styles.alv.cx/base.css" />
+	<link rel="stylesheet" type="text/css" href="https://styles.alv.cx/modules/darkmode.css" />
+	<style>
+	body {
+		margin: 0 auto 0 auto;
+		padding: 0;
+		height: 100vh;
+		display: flex;
+    flex-direction: column;
+		align-items: center;
+	}
+
+  #canvas {
+    width: 100%;
+    height: 70%;
+  }
+
+  #options {
+    display: flex;
+    align-items: center;
+  }
+
+  #force_x, #force_y {
+    width: 6em;
+  }
+
+  .hidden {
+    display: none;
+  }
+	</style>
+	<title>PD2v1 Drawer</title>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="options">
+    <label for="bc_select">Boundary condition type: </label>
+    <select id="bc_select">
+      <option value="NONE">NONE</option>
+      <option value="FIXED">FIXED</option>
+      <option value="FORCE">FORCE</option>
+    </select>
+    <input type="number" id="force_x" name="force_x" placeholder="Force (X)" class="hidden">
+    <input type="number" id="force_y" name="force_y" placeholder="Force (Y)" class="hidden">
+  </div>
+  <script>
+    const MB_LEFT = "MB_LEFT";
+    const MB_RIGHT = "MB_RIGHT";
+    const MB_MIDDLE = "MB_MIDDLE";
+
+    const style = getComputedStyle(document.body);
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const input_bc_select = document.getElementById("bc_select");
+    const input_force_x = document.getElementById("force_x");
+    const input_force_y = document.getElementById("force_y");
+
+    let points = [];
+    let links = [];
+
+    function handleCanvasClick(ev, mouse_button) {
+      ev.preventDefault();
+
+      const rect = canvas.getBoundingClientRect();
+      const x = (ev.clientX - rect.left)/rect.width;
+      const y = (ev.clientY - rect.top)/rect.height;
+      console.log(x, y, mouse_button);
+
+      if (mouse_button === MB_LEFT) {
+        addPoint(x, y, input_bc_select.value, input_force_x.value, input_force_y.value);
+      }
+    }
+
+    function updateBcInputs() {
+      if (input_bc_select.value === "FORCE") {
+        input_force_x.classList.remove("hidden");
+        input_force_y.classList.remove("hidden");
+      } else {
+        input_force_x.classList.add("hidden");
+        input_force_y.classList.add("hidden");
+      }
+    }
+
+    function addPoint(x, y, bc_type, bc_fx, bc_fy) {
+      points.push({
+        x: x,
+        y: y,
+        boundary_condition: {
+          type: bc_type,
+          force_x: bc_fx,
+          force_y: bc_fy
+        }
+      });
+
+      redraw();
+    }
+
+    function redraw() {
+      const canvas_styles = getComputedStyle(canvas);
+      canvas.height = canvas_styles.height.slice(0, -2);
+      canvas.width = canvas_styles.width.slice(0, -2);
+      const rect = canvas.getBoundingClientRect();
+      ctx.fillStyle = style.getPropertyValue("--fg");
+      ctx.fillRect(0, 0, rect.width, rect.height);
+
+      ctx.fillStyle = style.getPropertyValue("--red");
+      points.forEach(point => {
+        ctx.beginPath();
+        ctx.arc(point.x*rect.width, point.y*rect.height, rect.width/60, 0, 2*Math.PI);
+        ctx.fill();
+      })
+    }
+
+    canvas.addEventListener("click", ev => handleCanvasClick(ev, MB_LEFT));
+    canvas.addEventListener("contextmenu", ev => handleCanvasClick(ev, MB_RIGHT));
+    input_bc_select.addEventListener("change", updateBcInputs);
+
+    updateBcInputs();
+    redraw();
+  </script>
+</body>
